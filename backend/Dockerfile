@@ -62,9 +62,15 @@ RUN mkdir -p /tmp/req_uploads
 EXPOSE 8000
 
 # Start the FastAPI server.
-# uvicorn: async-capable ASGI server (required for FastAPI's async endpoints)
-# app.main:app   → the `app` FastAPI object defined in backend/app/main.py
-# --host 0.0.0.0 → listen on all interfaces (required inside Docker containers)
-# --port 8000    → must match the EXPOSE above
-# --workers 2    → 2 worker processes for handling concurrent requests
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# IMPORTANT — Shell form (not JSON array) is used here so that $PORT
+# is expanded by the shell at runtime. JSON array form ["uvicorn", ..., "$PORT"]
+# passes "$PORT" as a literal string and fails on Railway with:
+#   "Error: Invalid value for '--port': '$PORT' is not a valid integer."
+#
+# ${PORT:-8000} means: use $PORT if set (Railway injects it), otherwise 8000.
+# This makes the same image work on Railway (dynamic port) AND local Docker
+# Compose (where no $PORT is set so port 8000 is used).
+#
+# --workers 1 on Railway: free-tier Railway containers have limited RAM.
+# Use 1 worker on free tier. Increase to 2 on paid plans.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
