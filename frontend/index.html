@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Requirement Engineering Platform</title>
+  <!--
+    favicon.svg is served from /public/favicon.svg.
+    Vite automatically serves everything in the public/ folder at the root URL,
+    so /favicon.svg resolves to frontend/public/favicon.svg at runtime.
+  -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <!--
+    Load the actual font files. The CSS already referenced 'Inter' and
+    'JetBrains Mono' as the font-family, but without this link the browser
+    had no way to fetch them — it was silently falling back to the default
+    system font the whole time. This is what makes the typography look
+    noticeably sharper/more "designed" instead of generic.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <!--
+    #root is the single DOM node React mounts into.
+    React's createRoot(document.getElementById("root")) in main.jsx
+    targets this div — the entire app renders inside it.
+  -->
+  <div id="root"></div>
+
+  <!--
+    type="module" tells the browser this is an ES module entry point.
+    Vite replaces this script tag during build with the compiled bundle.
+    In development, Vite serves main.jsx directly via its dev server.
+  -->
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

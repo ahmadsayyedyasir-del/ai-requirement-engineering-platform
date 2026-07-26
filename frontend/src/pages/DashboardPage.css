@@ -1,0 +1,167 @@
+/*
+ * DashboardPage.css — Styles for the project list dashboard.
+ *
+ * WHAT THIS FILE STYLES:
+ *   - The page header (title + "New Project" button)
+ *   - The responsive project card grid
+ *   - Individual project cards (status pill, name, description, domain tag)
+ *   - Empty state (when no projects exist)
+ *   - Loading state (spinner while fetching)
+ *   - The "New Project" modal overlay and form
+ *
+ * RESPONSIVE GRID:
+ *   auto-fill + minmax(320px, 1fr) means:
+ *   "Fill as many columns as fit, each at least 320px wide."
+ *   On a wide screen: 3 columns. On a narrow screen: 1 column.
+ *   No media queries needed — CSS Grid handles it automatically.
+ */
+
+/* Constrain the dashboard content width for readability on wide screens */
+.dashboard { max-width: 1200px; }
+
+/* Page header: title on the left, "New Project" button on the right */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+.page-header h1       { font-size: 28px; font-weight: 700; }
+.page-header .subtitle { color: var(--color-text-muted); font-size: 14px; margin-top: 4px; }
+
+/* Responsive grid: fills available width with min-320px cards */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* Project card: flex column so footer always sits at the bottom */
+.project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.project-card:hover { border-color: var(--color-primary); transform: translateY(-2px); }
+
+/* Card header: status pill on the left, delete button on the right */
+.project-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Status pill — dynamically coloured via inline style in the JSX */
+.project-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;    /* Full pill */
+  text-transform: capitalize;
+}
+
+/* Card body — project name, description, domain tag */
+.project-card-body h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.project-card-body p  { font-size: 13px; color: var(--color-text-muted); line-height: 1.5; margin-bottom: 10px; }
+
+/* Card footer: creation date on left, "Open" button on right */
+.project-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;  /* Pushes footer to the bottom of the flex column */
+}
+.project-date { font-size: 12px; color: var(--color-text-muted); }
+
+/* Empty state — centred message when no projects exist */
+.empty-state {
+  text-align: center;
+  padding: 80px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.empty-state h2 { font-size: 22px; font-weight: 600; }
+.empty-state p  { color: var(--color-text-muted); max-width: 400px; }
+
+/* Loading state — spinner + message centred vertically */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 80px 0;
+  color: var(--color-text-muted);
+}
+
+/* ── Modal ─────────────────────────────────────────────────────────────── */
+
+/* Dark translucent backdrop — covers the full page behind the modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;                          /* Shorthand for top/right/bottom/left: 0 */
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;                     /* Above everything else */
+  backdrop-filter: blur(4px);        /* Subtle blur effect on the content behind */
+}
+
+/* Modal card */
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 32px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.modal h2 { font-size: 20px; font-weight: 700; }
+
+/* Form groups inside the modal — label above input */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.form-group input,
+.form-group textarea,
+.form-group select {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  resize: vertical;
+}
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus { border-color: var(--color-primary); }
+
+/* Modal action buttons — right-aligned Cancel + Create pair */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Spin animation for the loading spinner icon */
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

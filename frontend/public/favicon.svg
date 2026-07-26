@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Brain-inspired logo mark for the ReqAI platform favicon -->
+  <!-- Background circle in the brand indigo colour -->
+  <circle cx="16" cy="16" r="16" fill="#6366f1"/>
+  <!-- Stylised "R" lettermark in white -->
+  <text
+    x="8"
+    y="22"
+    font-family="'Inter', 'Segoe UI', sans-serif"
+    font-size="18"
+    font-weight="800"
+    fill="white"
+  >R</text>
+  <!-- Small AI spark dot — signals the AI nature of the product -->
+  <circle cx="24" cy="9" r="3" fill="#22d3ee"/>
+</svg>

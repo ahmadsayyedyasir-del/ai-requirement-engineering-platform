@@ -1,0 +1,178 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — Defines and wires together all 6 services.
+#
+# WHY DOCKER COMPOSE?
+#   The platform requires 6 processes: API, Worker, Frontend, PostgreSQL, Redis,
+#   ChromaDB. Running them manually requires starting 6 terminals and configuring
+#   each one to find the others. Compose does this with a single command:
+#     docker compose up --build
+#
+# NETWORKING:
+#   All services share a Docker network by default. This means services can
+#   reach each other by SERVICE NAME, not IP address:
+#     - The API connects to DB at "db:5432" (not localhost:5432)
+#     - The API connects to Redis at "redis:6379"
+#     - The API connects to ChromaDB at "chroma:8000"
+#   This is why the `environment:` overrides below use service names as hosts.
+#
+# HEALTH CHECKS:
+#   Docker won't start the API until DB, Redis, and ChromaDB are healthy.
+#   Without health checks, the API would start before the DB is ready and crash.
+#   condition: service_healthy in `depends_on` enforces this ordering.
+#
+# VOLUMES:
+#   Named volumes (postgres_data, redis_data, etc.) persist data across restarts.
+#   Without volumes, all data would be lost every time a container restarts.
+#
+# ENV FILE vs ENVIRONMENT:
+#   env_file: ./backend/.env  → loads ALL variables from the .env file
+#   environment: DB_URL=...   → OVERRIDES specific variables for Docker networking
+#   (The .env uses localhost for local dev; override uses service names for Docker)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL 16 — primary relational database ──────────────────────────
+  db:
+    image: postgres:16-alpine    # Alpine = smaller image (~70MB vs ~400MB)
+    container_name: reqeng_db
+    restart: unless-stopped      # Restart if it crashes, but not if manually stopped
+    environment:
+      POSTGRES_USER:     reqeng          # DB username
+      POSTGRES_PASSWORD: reqeng_pass     # DB password (change in production!)
+      POSTGRES_DB:       reqeng_db       # Database name to create on first run
+    volumes:
+      # Persistent storage: survive container restarts and `docker compose down`
+      - postgres_data:/var/lib/postgresql/data
+      # Init SQL: runs once when the container is first created
+      - ./backend/scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"                # Expose to host for local DB tools (pgAdmin, DBeaver)
+    healthcheck:
+      # pg_isready: checks if PostgreSQL is accepting connections
+      test: ["CMD-SHELL", "pg_isready -U reqeng -d reqeng_db"]
+      interval: 10s  # Check every 10 seconds
+      timeout: 5s    # Fail if no response in 5 seconds
+      retries: 5     # Mark as unhealthy after 5 consecutive failures
+
+  # ── Redis 7 — message broker (Celery) and cache ──────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: reqeng_redis
+    restart: unless-stopped
+    # --appendonly yes: enables AOF persistence — Redis writes every command to
+    # disk so data survives restarts (not just snapshots)
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"    # Expose for local Redis clients (Redis Insight, redis-cli)
+    healthcheck:
+      # redis-cli ping: returns "PONG" if Redis is ready
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── ChromaDB — vector database for RAG ───────────────────────────────────
+  chroma:
+    image: chromadb/chroma:0.5.23    # Pinned version for reproducibility
+    container_name: reqeng_chroma
+    restart: unless-stopped
+    volumes:
+      - chroma_data:/chroma/chroma   # Persist embeddings across restarts
+    ports:
+      - "8001:8000"    # Map internal 8000 to host 8001 (avoids conflict with API)
+    environment:
+      ANONYMIZED_TELEMETRY: "False"  # Disable usage telemetry reporting
+      ALLOW_RESET: "True"            # Allow resetting collections (useful for dev)
+    healthcheck:
+      # ChromaDB heartbeat endpoint — returns 200 if service is ready
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend — main API server ─────────────────────────────────────
+  api:
+    build:
+      context: ./backend        # Build from the backend/ directory
+      dockerfile: Dockerfile    # Use the API Dockerfile
+    container_name: reqeng_api
+    restart: unless-stopped
+    depends_on:
+      # Wait until these services pass their health checks before starting
+      db:     { condition: service_healthy }
+      redis:  { condition: service_healthy }
+      chroma: { condition: service_healthy }
+    env_file:
+      - ./backend/.env    # Load OPENAI_API_KEY and other secrets from .env
+    environment:
+      # Override host names for Docker networking (service names, not localhost)
+      DATABASE_URL:          postgresql+asyncpg://reqeng:reqeng_pass@db:5432/reqeng_db
+      REDIS_URL:             redis://redis:6379/0
+      CHROMA_HOST:           chroma
+      CHROMA_PORT:           8000        # Internal Docker port (not the host-mapped 8001)
+      CELERY_BROKER_URL:     redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - uploads_data:/tmp/req_uploads    # Shared with worker (both need to read/write files)
+    ports:
+      - "8000:8000"    # API accessible at http://localhost:8000
+    healthcheck:
+      # Check the /health endpoint defined in main.py
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ── Celery Worker — async AI task processor ───────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker    # Same code, different startup command
+    container_name: reqeng_worker
+    restart: unless-stopped
+    depends_on:
+      db:     { condition: service_healthy }
+      redis:  { condition: service_healthy }
+      chroma: { condition: service_healthy }
+    env_file:
+      - ./backend/.env
+    environment:
+      # Same overrides as the API — both need to connect to the same services
+      DATABASE_URL:          postgresql+asyncpg://reqeng:reqeng_pass@db:5432/reqeng_db
+      REDIS_URL:             redis://redis:6379/0
+      CHROMA_HOST:           chroma
+      CHROMA_PORT:           8000
+      CELERY_BROKER_URL:     redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - uploads_data:/tmp/req_uploads    # Shared volume with API for uploaded files
+    # Override CMD from Dockerfile.worker explicitly (same as CMD, just made visible)
+    command: celery -A app.worker worker --loglevel=info --concurrency=2
+
+  # ── React Frontend — static web UI served by Nginx ───────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile    # Multi-stage build: Vite → Nginx
+    container_name: reqeng_frontend
+    restart: unless-stopped
+    depends_on:
+      - api    # Wait for API to be available (not health-checked, just started first)
+    environment:
+      # This URL is baked into the React bundle at build time (Vite env variable).
+      # In production, change to your actual domain.
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:80"    # Frontend accessible at http://localhost:3000
+
+# ── Named volumes — persisted data ───────────────────────────────────────────
+# Named volumes survive `docker compose down` (unlike anonymous volumes).
+# To delete them (DESTRUCTIVE — deletes all data): docker compose down -v
+volumes:
+  postgres_data:  # PostgreSQL data files
+  redis_data:     # Redis AOF persistence file
+  chroma_data:    # ChromaDB vector embeddings
+  uploads_data:   # Uploaded PDF/DOCX files (shared between api and worker)

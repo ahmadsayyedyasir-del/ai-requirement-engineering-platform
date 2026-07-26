@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.worker — Builds the Celery background AI task worker container.
+#
+# WHY A SEPARATE DOCKERFILE?
+#   The API and worker run the SAME code base but start different processes:
+#     API container:    uvicorn app.main:app     (HTTP server)
+#     Worker container: celery -A app.worker ... (background task runner)
+#
+#   Separate containers allow independent scaling:
+#     - 1 API container   → handles HTTP traffic
+#     - 3 worker containers → process AI tasks in parallel
+#
+# CELERY TASK FLOW:
+#   1. API receives "analyze requirements" request
+#   2. API queues a message in Redis (the Celery broker)
+#   3. This worker picks up the message
+#   4. Worker runs the AI pipeline (LangGraph + GPT-4o)
+#   5. Worker saves results to PostgreSQL
+#   6. API returns 202 Accepted — it never waits for the worker
+#
+# CONCURRENCY:
+#   --concurrency=2 means 2 parallel worker processes.
+#   Increase on machines with more RAM (each AI task uses ~1–2GB for GPT-4o calls).
+#
+# NOTE: No inline comments after backslash in RUN commands — Docker rejects them.
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# System dependencies — same set as the API image.
+# curl is omitted here (worker has no HTTP health check endpoint).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies from the same requirements.txt as the API.
+# This ensures both containers always run identical library versions.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code
+COPY . .
+
+# Create upload directory — workers read uploaded PDF/DOCX files during analysis
+RUN mkdir -p /tmp/req_uploads
+
+# Start the Celery worker.
+# -A app.worker      → import the `celery_app` object from backend/app/worker.py
+# worker             → run as a worker (not as a scheduler/beat)
+# --loglevel=info    → show INFO+ logs (task started / completed / failed)
+# --concurrency=2    → 2 parallel worker processes
+CMD ["celery", "-A", "app.worker", "worker", "--loglevel=info", "--concurrency=2"]

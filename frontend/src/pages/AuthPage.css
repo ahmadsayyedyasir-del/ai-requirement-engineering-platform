@@ -1,0 +1,100 @@
+/*
+ * AuthPage.css — Shared styles for LoginPage and RegisterPage.
+ *
+ * WHY SHARED BETWEEN TWO PAGES?
+ *   LoginPage and RegisterPage have an identical visual layout:
+ *   a centred card on a dark background. Rather than duplicating styles
+ *   in two files, both pages import this single file.
+ *
+ * LAYOUT STRATEGY:
+ *   .auth-container uses flexbox to centre the card both horizontally and
+ *   vertically in the full viewport. This works regardless of screen size
+ *   and doesn't require calculating margins.
+ */
+
+/* Full-page centring container — covers the entire viewport */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;       /* Vertical centring */
+  justify-content: center;   /* Horizontal centring */
+  background: var(--color-bg);
+  padding: 24px;             /* Prevents card from touching viewport edges on small screens */
+}
+
+/* The login/register card */
+.auth-card {
+  width: 100%;
+  max-width: 420px;          /* Readable width — not too wide for a form */
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: var(--shadow);
+}
+
+/* Logo + title section at the top of the card */
+.auth-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.auth-logo h1 { font-size: 22px; font-weight: 700; margin-top: 12px; color: var(--color-text); }
+.auth-logo p  { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+
+/* Form — vertical stack of inputs with consistent gap */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* A label + input pair — stacked vertically */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* Input fields — dark background matching the rest of the dark theme */
+.form-group input,
+.form-group textarea,
+.form-group select {
+  background: var(--color-bg);         /* Darker than card — creates visual depth */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  outline: none;                       /* Remove default browser focus ring */
+}
+/* On focus: highlight with brand colour — clear visual feedback for keyboard users */
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--color-primary);
+}
+
+/* Error message box — red tinted alert */
+.auth-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;                      /* Lighter red text — more readable on dark bg */
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+/* Footer link — "No account? Create one" at the bottom of the card */
+.auth-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

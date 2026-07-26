@@ -1,0 +1,173 @@
+/*
+ * Layout.css — Styles for the persistent sidebar layout shell.
+ *
+ * WHY A SEPARATE CSS FILE (not inline styles)?
+ *   Sidebar dimensions (like width: 240px) are used in multiple places:
+ *   - The sidebar itself needs width: 240px
+ *   - The main content needs margin-left: 240px to avoid being hidden under the sidebar
+ *   Keeping these in a CSS file means changing "240px" once updates both.
+ *
+ * LAYOUT STRATEGY — Fixed sidebar + flowing main content:
+ *   The sidebar uses `position: fixed` so it stays on screen when the user
+ *   scrolls long pages. The main content has `margin-left: 240px` to
+ *   compensate for the sidebar taking up space on the left.
+ *
+ *   Alternative approach: CSS Grid (sidebar + main in a grid). Fixed sidebar
+ *   was chosen here because it's simpler and more explicit.
+ */
+
+/* Root container — full viewport height flex row */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: 240px;           /* IMPORTANT: must match margin-left in .main-content */
+  min-height: 100vh;
+  background: var(--color-surface);  /* One shade lighter than the page bg */
+  border-right: 1px solid var(--color-border);
+  position: relative;
+
+  /* Flex column so logo, nav, and footer stack vertically */
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+
+  /* Fixed — sidebar stays put as the page scrolls */
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+
+  /* On top of page content (in case anything overlaps) */
+  z-index: 100;
+}
+
+/* Ruler-tick edge — a faint row of drafting-scale ticks along the sidebar's
+   right border. Small nod to the blueprint/drafting-table theme without
+   competing with the nav content. */
+.sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0; right: -1px; bottom: 0; width: 1px;
+  background-image: repeating-linear-gradient(
+    180deg, var(--color-border-hover) 0px, var(--color-border-hover) 1px,
+    transparent 1px, transparent 24px
+  );
+  opacity: 0.6;
+}
+
+/* Logo section — brand mark + app name at the top of sidebar */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px 24px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border); /* Visual separator from nav */
+  margin-bottom: 16px;
+}
+
+/* Navigation list — takes up all available vertical space between logo and footer */
+.sidebar-nav {
+  flex: 1;              /* Grows to fill space between logo and footer */
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;             /* Small gap between nav items */
+}
+
+/* Individual nav item — used by NavLink in Layout.jsx */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.15s var(--ease);
+  text-decoration: none;                     /* Override anchor default underline */
+}
+/* Hover — subtle background lift + nudge right */
+.nav-item:hover  { background: var(--color-surface-2); color: var(--color-text); transform: translateX(2px); }
+/* Active — cyan left rule + tinted fill instead of a flat solid block,
+   consistent with the "ink on a drafting sheet" accent used elsewhere */
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(34,184,214,0.16), rgba(34,184,214,0.03));
+  color: var(--color-text);
+  border-left-color: var(--color-accent);
+}
+
+/* Footer section — user info + logout pinned to the bottom */
+.sidebar-footer {
+  padding: 16px 20px 0;
+  border-top: 1px solid var(--color-border); /* Visual separator from nav */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* User info row — avatar circle + name/role text */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/*
+ * Avatar — a coloured circle showing the user's initial.
+ * Simpler and more reliable than profile photos (always renders, never broken).
+ * The background colour is the primary brand colour so it's always visible
+ * against the sidebar background.
+ */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;                  /* Perfect circle */
+  background: var(--color-primary);    /* Brand colour background */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;                      /* Don't shrink if text is long */
+}
+
+/* User's full name — slightly bolder than the role label */
+.user-name { font-size: 13px; font-weight: 600; }
+
+/* User's role (analyst, admin, viewer) — muted and capitalised */
+.user-role { font-size: 11px; color: var(--color-text-muted); text-transform: capitalize; }
+
+/* ── Main content area ───────────────────────────────────────────────────── */
+
+.main-content {
+  flex: 1;
+  margin-left: 240px;  /* Must equal sidebar width — keeps content from hiding under sidebar */
+  padding: 32px;
+  min-height: 100vh;
+  overflow-y: auto;    /* Scroll this area independently of the fixed sidebar */
+}
+
+/* ── Full-page loading screen ───────────────────────────────────────────── */
+/*
+ * Shown by ProtectedRoute in App.jsx while the token validity check is
+ * running on first page load. Prevents a flash of the login page.
+ */
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--color-text-muted);
+  font-size: 18px;
+}
