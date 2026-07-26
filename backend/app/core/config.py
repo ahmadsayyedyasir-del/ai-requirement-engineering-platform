@@ -130,9 +130,17 @@ class Settings(BaseSettings):
 
     # ── CORS ──────────────────────────────────────────────────────────────────
 
-    # Frontend origins allowed to call the API.
-    # 5173 = Vite dev server, 3000 = Docker/production frontend.
-    # In production, replace with your real domain.
+    # FRONTEND_URL: the single production origin of your deployed frontend.
+    # Example: https://your-app.vercel.app
+    # In development this is empty — the defaults below cover localhost.
+    # In production set this env var to your Vercel/Render URL so CORS
+    # only allows requests from your real frontend domain.
+    FRONTEND_URL: str = Field(default="")
+
+    # CORS_ORIGINS is the full list used by the FastAPI middleware.
+    # The localhost entries are kept so local Docker development still works
+    # without having to set FRONTEND_URL.
+    # If FRONTEND_URL is set it is appended dynamically in main.py.
     CORS_ORIGINS: List[str] = Field(
         default=["http://localhost:5173", "http://localhost:3000"]
     )

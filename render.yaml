@@ -1,0 +1,177 @@
+# render.yaml — Render.com deployment configuration
+#
+# This file defines ALL services that make up the platform on Render.
+# Render reads this file when you connect the repo via "Blueprint" deployment.
+#
+# SERVICES DEFINED HERE:
+#   api      — FastAPI backend (Web Service, Docker)
+#   worker   — Celery background worker (Background Worker, Docker)
+#   db       — PostgreSQL 16 (Render Managed Database)
+#   redis    — Redis 7   (Render Managed Redis)
+#
+# NOTE: ChromaDB is not available as a managed Render service.
+#   Options:
+#     A) Run ChromaDB as a separate Render Docker web service (uncomment below)
+#     B) Use Chroma Cloud (https://trychroma.com) — set CHROMA_HOST/PORT env vars
+#     C) Disable RAG (set OPENAI_API_KEY="" so rag_service.py skips ChromaDB)
+#
+# PRICING NOTE: All services below qualify for Render's free tier EXCEPT
+# the managed PostgreSQL (free tier available with 90-day expiry).
+# The Celery worker requires at least the Starter plan ($7/month).
+
+databases:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  - name: reqeng-postgres
+    databaseName: reqeng_db
+    user: reqeng
+    plan: free      # Free tier: 256MB RAM, 1GB storage, expires after 90 days
+                    # Upgrade to Starter ($7/mo) for persistent production use
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  - name: reqeng-redis
+    type: redis
+    plan: free      # Free tier: 25MB RAM — sufficient for Celery broker + result backend
+
+services:
+
+  # ── FastAPI Backend (Web Service) ────────────────────────────────────────────
+  - type: web
+    name: reqeng-api
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free          # Free tier: 512MB RAM, 0.1 CPU, spins down after 15min inactivity
+    healthCheckPath: /health
+
+    envVars:
+      # Application
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        sync: false     # "sync: false" means set this manually in Render dashboard
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+
+      # Database — Render auto-injects DATABASE_URL from the managed DB
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reqeng-postgres
+          property: connectionString
+
+      # Redis — Render auto-injects REDIS_URL from the managed Redis
+      - key: REDIS_URL
+        fromService:
+          name: reqeng-redis
+          type: redis
+          property: connectionString
+
+      # ChromaDB — point to your ChromaDB service URL or Chroma Cloud
+      - key: CHROMA_HOST
+        sync: false     # Set to your ChromaDB service hostname
+      - key: CHROMA_PORT
+        value: "8000"
+
+      # LLM Provider — Groq is the default (fastest, free tier)
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false     # Paste your gsk_... key in Render dashboard
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+
+      # OpenAI — only needed for embeddings (RAG) or if switching to GPT-4o
+      - key: OPENAI_API_KEY
+        value: ""
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+
+      # CORS — set to your Vercel frontend URL after deployment
+      - key: FRONTEND_URL
+        sync: false     # e.g. https://your-app.vercel.app
+
+      # Celery
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: reqeng-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          name: reqeng-redis
+          type: redis
+          property: connectionString
+
+      # File uploads
+      - key: UPLOAD_DIR
+        value: /tmp/req_uploads
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "50"
+
+  # ── Celery Background Worker (Background Worker) ─────────────────────────────
+  - type: worker
+    name: reqeng-worker
+    runtime: docker
+    dockerfilePath: backend/Dockerfile.worker
+    dockerContext: backend
+    plan: starter   # Background workers require at least Starter plan ($7/mo)
+
+    envVars:
+      # Worker needs the same env vars as the API
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reqeng-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: reqeng-redis
+          type: redis
+          property: connectionString
+      - key: CHROMA_HOST
+        sync: false
+      - key: CHROMA_PORT
+        value: "8000"
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OPENAI_API_KEY
+        value: ""
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: reqeng-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          name: reqeng-redis
+          type: redis
+          property: connectionString
+      - key: UPLOAD_DIR
+        value: /tmp/req_uploads
+
+  # ── ChromaDB (Optional — uncomment if not using Chroma Cloud) ────────────────
+  # - type: web
+  #   name: reqeng-chroma
+  #   runtime: docker
+  #   image:
+  #     url: docker.io/chromadb/chroma:0.5.23
+  #   plan: free
+  #   disk:
+  #     name: chroma-data
+  #     mountPath: /chroma/chroma
+  #     sizeGB: 1
+  #   envVars:
+  #     - key: ANONYMIZED_TELEMETRY
+  #       value: "False"

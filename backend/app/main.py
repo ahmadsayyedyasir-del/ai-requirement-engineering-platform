@@ -127,13 +127,20 @@ app = FastAPI(
 
 # --- CORS Middleware ---
 # CORS = Cross-Origin Resource Sharing.
-# We're telling the browser: "Requests from these origins (frontend URLs)
-# are allowed to hit our API."
-# allow_credentials=True means the browser is allowed to send cookies and
-# Authorization headers. allow_methods=["*"] means GET, POST, PUT, DELETE etc.
+# We build the allowed-origins list at startup so it includes:
+#   - the hardcoded localhost origins (for local Docker development)
+#   - FRONTEND_URL from .env (the real production Vercel/Render domain)
+# This way you never need to rebuild the container just to change the
+# allowed frontend URL — just update the env var and restart.
+_cors_origins = list(settings.CORS_ORIGINS)
+if settings.FRONTEND_URL and settings.FRONTEND_URL not in _cors_origins:
+    # Strip trailing slash so "https://app.vercel.app/" and
+    # "https://app.vercel.app" are treated as the same origin.
+    _cors_origins.append(settings.FRONTEND_URL.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,   # List comes from .env / config.py
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

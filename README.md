@@ -1,293 +1,283 @@
 # AI Requirement Engineering Platform
 ### Ezitech | AI-017
 
-An end-to-end, AI-powered platform that automates the software requirement engineering lifecycle — from a raw business idea to a complete, structured documentation package including SRS, BRD, User Stories, UML diagrams, sprint plans, cost estimates, and AI-driven quality reviews.
+An end-to-end AI platform that turns a raw business idea into a complete software
+engineering document package — SRS, BRD, User Stories, UML diagrams, sprint plans,
+cost estimates, and a quality review — in minutes, not weeks.
 
 ---
 
-## Architecture Overview
+## LLM Provider — Groq (NOT OpenAI)
+
+> **Clarification:** The actual default LLM wired up in `llm_client.py` is
+> **Groq** using **`llama-3.3-70b-versatile`** — NOT OpenAI GPT-4o.
+>
+> Groq was chosen because it offers a free tier, is extremely fast
+> (~500 tokens/second via LPU hardware), and produces high-quality structured
+> JSON output. GPT-4o is supported as a drop-in alternative — set
+> `LLM_PROVIDER=openai` and `OPENAI_API_KEY` in your `.env` to switch.
+
+---
+
+## Architecture
 
 ```
-                         ┌─────────────────────────────────────────────┐
-                         │           React + Vite Frontend              │
-                         │  Dashboard → Project → Requirements → Docs  │
-                         └─────────────────┬───────────────────────────┘
-                                           │ HTTPS (REST API)
-                         ┌─────────────────▼───────────────────────────┐
-                         │          FastAPI (Python 3.12)               │
-                         │  /api/v1/  — JWT auth, CRUD, async tasks     │
-                         └────┬────────────┬──────────────┬────────────┘
-                              │            │              │
-               ┌──────────────▼──┐  ┌──────▼──────┐  ┌──▼──────────────┐
-               │  PostgreSQL 16  │  │  Redis 7    │  │  ChromaDB       │
-               │  (primary data) │  │  (cache +   │  │  (vector store  │
-               │                 │  │  Celery)    │  │   for RAG)      │
-               └─────────────────┘  └─────────────┘  └─────────────────┘
-                                           │
-                         ┌─────────────────▼───────────────────────────┐
-                         │          LangGraph AI Pipeline               │
-                         │  Input → RAG Context → LLM → Validate →    │
-                         │  Persist (requirements, docs, diagrams)     │
-                         └─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│         React + Vite Frontend  (Vercel)          │
+│         https://your-app.vercel.app              │
+└────────────────────┬─────────────────────────────┘
+                     │  HTTPS (VITE_API_URL)
+┌────────────────────▼─────────────────────────────┐
+│       FastAPI Backend  (Railway / Render)         │
+│       /api/v1  · JWT auth · async endpoints      │
+└──┬───────────┬──────────────┬────────────────────┘
+   │           │              │
+┌──▼──┐  ┌────▼───┐  ┌───────▼──────┐  ┌──────────────┐
+│  DB │  │ Redis  │  │  ChromaDB    │  │  Groq API    │
+│  PG │  │Celery  │  │  RAG vectors │  │ llama-3.3-70b│
+└─────┘  └────────┘  └──────────────┘  └──────────────┘
 ```
 
-### AI Pipeline Flow
+### AI Pipeline (LangGraph — 5 nodes)
 
 ```
-Raw Input (text/PDF/DOCX/transcript)
-        │
-        ▼
-[Phase 3] LangGraph Analysis Pipeline
-  1. load_inputs    — fetch all raw text from DB
-  2. rag_context    — retrieve relevant SE knowledge from ChromaDB
-  3. extract_reqs   — LLM (GPT-4o) extracts structured JSON requirements
-  4. validate_output — assign req_ids (FR-001, NFR-003...), validate priorities
-  5. persist        — save to PostgreSQL + index in ChromaDB
-        │
-        ▼
-Structured Requirements (PostgreSQL)
-        │
-        ├─► [Phase 4] Document Generator (SRS, BRD, User Stories, Use Cases...)
-        ├─► [Phase 5] Planning Generator (Roadmap, Sprints, Cost, Team, Risk)
-        ├─► [Phase 6] Diagram Generator (Mermaid.js Use Case, ER, Sequence...)
-        └─► [Phase 7] AI Review Engine (quality score, issues, suggestions)
+Input text/PDF → step_load_inputs → step_rag_context
+              → step_extract_requirements (Groq LLM)
+              → step_validate_output → step_persist → PostgreSQL
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Justification |
-|---|---|---|
-| Backend | Python 3.12, FastAPI | Async-native, excellent OpenAPI support |
-| AI Orchestration | LangChain + LangGraph | Stateful AI pipelines, easy node composition |
-| LLM | OpenAI GPT-4o | Best structured JSON output reliability |
-| Vector Store / RAG | ChromaDB | Lightweight, Docker-friendly, Python-native |
-| Database | PostgreSQL 16 | Full ACID, JSON columns, UUID support |
-| Cache / Queue | Redis 7 | Celery broker + API response caching |
-| Diagrams | Mermaid.js | Renders in browser, no server-side render needed |
-| Frontend | React 18 + Vite | Fast HMR, lightweight, Mermaid integration |
-| Containerization | Docker + Compose | One-command setup for all services |
-
----
-
-## Prerequisites
-
-- **Docker Desktop** 24+ (with Compose v2)
-- **OpenAI API Key** (GPT-4o access required)
-
----
-
-## Setup & Run
-
-### 1. Clone and configure
-
-```bash
-git clone https://github.com/ezitech/ai-req-platform.git
-cd ai-req-platform
-
-# Create backend .env from template
-cp backend/.env.example backend/.env
-```
-
-Edit `backend/.env` and set your OpenAI API key:
-```
-OPENAI_API_KEY=sk-your-key-here
-```
-
-### 2. Start all services
-
-```bash
-docker compose up --build
-```
-
-This starts:
-- **PostgreSQL** on port `5432`
-- **Redis** on port `6379`
-- **ChromaDB** on port `8001`
-- **FastAPI API** on port `8000`
-- **Celery Worker** (background AI tasks)
-- **React Frontend** on port `3000`
-
-### 3. Open the platform
-
-| Service | URL |
+| Layer | Technology |
 |---|---|
-| Frontend UI | http://localhost:3000 |
-| API Swagger Docs | http://localhost:8000/api/docs |
-| API ReDoc | http://localhost:8000/api/redoc |
-| Health Check | http://localhost:8000/health |
-
-### 4. Register a user
-
-Go to http://localhost:3000/register — create your analyst account.
+| Backend | Python 3.12, FastAPI |
+| AI Orchestration | LangChain + LangGraph |
+| LLM (default) | **Groq — llama-3.3-70b-versatile** |
+| LLM (alternative) | OpenAI GPT-4o (set `LLM_PROVIDER=openai`) |
+| Vector Store / RAG | ChromaDB |
+| Database | PostgreSQL 16 |
+| Cache / Queue | Redis 7 + Celery |
+| Diagrams | Mermaid.js (client-side render) |
+| Frontend | React 18 + Vite |
+| Containers | Docker + Compose |
 
 ---
 
-## Local Development (without Docker)
+## Quick Start (Local — Docker)
+
+**Prerequisites:** Docker Desktop + a free Groq key from https://console.groq.com
 
 ```bash
-# Backend
-cd backend
-python -m venv venv
-venv\Scripts\activate          # Windows
-pip install -r requirements.txt
-cp .env.example .env           # fill in values
-uvicorn app.main:app --reload --port 8000
+# 1. Clone
+git clone https://github.com/ahmadsayyedyasir-del/ai-requirement-engineering-platform.git
+cd ai-requirement-engineering-platform
 
-# Frontend (separate terminal)
-cd frontend
-npm install
-npm run dev                    # starts on http://localhost:5173
+# 2. Configure
+cp backend/.env.example backend/.env
+# Open backend/.env and set:  GROQ_API_KEY=gsk_...
+
+# 3. Start (first run takes 5-10 min to download images)
+docker compose up --build
+
+# 4. Open
+#   Frontend:  http://localhost:3000
+#   API docs:  http://localhost:8000/api/docs
 ```
 
-Requires PostgreSQL, Redis, and ChromaDB running locally or via Docker:
-```bash
-docker compose up db redis chroma
-```
+**Windows one-click scripts** (no terminal needed after first setup):
+- `start.bat` — starts all services and opens the browser automatically
+- `stop.bat`  — stops all services (your database data is preserved)
+
+---
+
+## Production Deployment
+
+### Option A — Railway (API) + Vercel (Frontend)
+
+#### Step 1 — Deploy the backend API on Railway
+
+1. Go to [railway.app](https://railway.app) → **Login with GitHub**
+2. **New Project → Deploy from GitHub repo** → select this repo
+3. Railway detects `railway.json` — it builds from `backend/Dockerfile`
+4. Click **Add Plugin → PostgreSQL** — Railway creates a managed database
+5. Click **Add Plugin → Redis** — Railway creates a managed Redis
+6. Go to **your API service → Variables** and add every variable from the table below
+7. Copy the **public URL** Railway assigns (e.g. `https://reqeng-api.railway.app`)
+
+**Railway environment variables to paste:**
+
+| Variable | Value |
+|---|---|
+| `ENVIRONMENT` | `production` |
+| `DEBUG` | `false` |
+| `SECRET_KEY` | run `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `LLM_PROVIDER` | `groq` |
+| `GROQ_API_KEY` | your `gsk_...` key from console.groq.com |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` |
+| `DATABASE_URL` | copy from Railway PostgreSQL → change `postgresql://` to `postgresql+asyncpg://` |
+| `REDIS_URL` | copy from Railway Redis plugin |
+| `CELERY_BROKER_URL` | same Redis URL with `/1` appended |
+| `CELERY_RESULT_BACKEND` | same Redis URL with `/2` appended |
+| `FRONTEND_URL` | your Vercel URL — fill in after Step 2 |
+| `CHROMA_HOST` | add a second Railway service running `chromadb/chroma:0.5.23`, or leave empty to disable RAG |
+| `CHROMA_PORT` | `8000` |
+| `UPLOAD_DIR` | `/tmp/req_uploads` |
+| `MAX_UPLOAD_SIZE_MB` | `50` |
+
+#### Step 2 — Deploy the Celery worker on Railway
+
+1. In the same Railway project, click **New Service → GitHub Repo** again
+2. In **Settings → Build**, set **Dockerfile Path** to `backend/Dockerfile.worker`
+3. Add the same environment variables as the API service above
+
+#### Step 3 — Deploy the frontend on Vercel
+
+1. Go to [vercel.com](https://vercel.com) → **Login with GitHub**
+2. **New Project → Import** this GitHub repo
+3. Vercel detects `frontend/vercel.json` automatically
+4. Set **Root Directory** to `frontend`
+5. Add this environment variable in **Settings → Environment Variables**:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | your Railway API URL (e.g. `https://reqeng-api.railway.app`) |
+
+6. Click **Deploy**
+7. Copy the Vercel URL → go back to Railway → update `FRONTEND_URL` with it
+
+---
+
+### Option B — Render (all services)
+
+1. Go to [render.com](https://render.com) → **Login with GitHub**
+2. **New → Blueprint** → select this repo
+3. Render reads `render.yaml` and creates all services automatically
+4. Fill in the `sync: false` variables (marked with a lock icon) in the Render dashboard:
+   - `SECRET_KEY`
+   - `GROQ_API_KEY`
+   - `FRONTEND_URL` (fill in after frontend is deployed)
+   - `CHROMA_HOST` (optional — for RAG)
+
+---
+
+## All Environment Variables
+
+See [`backend/.env.example`](backend/.env.example) for the full annotated list of
+backend variables, and [`frontend/.env.example`](frontend/.env.example) for
+frontend variables.
+
+**Critical ones at a glance:**
+
+| Variable | Where | What it does |
+|---|---|---|
+| `GROQ_API_KEY` | backend | Groq API key (required) |
+| `SECRET_KEY` | backend | JWT signing secret (required, must be random) |
+| `DATABASE_URL` | backend | PostgreSQL asyncpg connection string |
+| `REDIS_URL` | backend | Redis connection string |
+| `FRONTEND_URL` | backend | Your Vercel URL — added to CORS allowed origins |
+| `VITE_API_URL` | frontend | Your Railway/Render API URL |
 
 ---
 
 ## Demo Walkthrough
 
-### Step-by-step: raw idea → full document package
-
-**1. Register and log in** at http://localhost:3000
-
-**2. Create a project:**
-- Click "New Project"
-- Name: `Online Food Delivery App`
-- Domain: `ecommerce`
-
-**3. Submit business input (paste this):**
-> "We want to build a mobile and web app for food delivery similar to Uber Eats. Customers should be able to browse restaurants, view menus, add items to cart, place orders, track delivery in real-time, and pay online via cards or wallets. Restaurant owners should manage their menu, accept/reject orders, and track earnings. Delivery riders should receive order notifications, navigate to restaurant and customer, and update delivery status. The platform needs user authentication, ratings and reviews, admin dashboard, push notifications, and promotional discount codes."
-
-**4. Click "Analyze Requirements"** — wait ~30-60 seconds.
-
-**5. View Requirements tab** — you should see 30+ structured requirements across FR/NFR/user roles/business rules/risks.
-
-**6. Click "Generate Everything"** — generates all 8 document types + 8 planning artifacts + 6 Mermaid diagrams.
-
-**7. Browse Documents tab** — view SRS, BRD, User Stories, etc. in rendered markdown.
-
-**8. Browse Diagrams tab** — view live Mermaid renderings of ER, Sequence, Architecture diagrams.
-
-**9. Run MoSCoW AI** (Requirements tab) — AI re-prioritizes with reasoning.
-
-**10. Run AI Review** — get a quality score (0-100) and structured issue report with suggestions.
+1. Register at `/register` — create your analyst account
+2. **New Project** — name it `Food Delivery App`, domain `ecommerce`
+3. Paste this into the text box and click **Submit**:
+   > *"Build a food delivery app. Customers browse restaurants, place orders,
+   > pay online, and track delivery in real time. Restaurant owners manage
+   > menus and earnings. Riders receive notifications and update status."*
+4. Click **Analyze Requirements** — wait ~30 seconds (Groq is fast)
+5. Click **Generate Everything** — wait ~3-5 minutes
+6. Browse:
+   - **Requirements** — 30+ structured FRs, NFRs, risks, rules
+   - **Documents** — SRS, BRD, User Stories, Acceptance Criteria
+   - **Planning** — roadmap, sprint plan, cost estimate
+   - **Diagrams** — ER diagram, sequence diagram, architecture
+   - **AI Review** — quality score (0-100) + issue list
 
 ---
 
 ## API Documentation
 
-All endpoints are auto-documented at `/api/docs` (Swagger UI).
+Auto-generated at `/api/docs` (Swagger UI) and `/api/redoc`.
 
 Key endpoints:
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/v1/auth/register` | Create analyst account |
-| POST | `/api/v1/auth/login` | Get JWT token |
-| POST | `/api/v1/projects/` | Create project |
-| POST | `/api/v1/projects/{id}/inputs/text` | Submit text input |
-| POST | `/api/v1/projects/{id}/inputs/upload` | Upload PDF/DOCX |
-| POST | `/api/v1/projects/{id}/requirements/analyze` | Trigger AI analysis |
-| GET | `/api/v1/projects/{id}/requirements/` | List requirements |
-| POST | `/api/v1/projects/{id}/documents/generate` | Generate docs |
-| GET | `/api/v1/projects/{id}/documents/{type}` | Get document |
-| POST | `/api/v1/projects/{id}/planning/generate` | Generate planning |
-| POST | `/api/v1/projects/{id}/diagrams/generate` | Generate diagrams |
-| POST | `/api/v1/projects/{id}/review/run` | Run AI review |
-| GET | `/api/v1/projects/{id}/review/latest` | Get review report |
-| POST | `/api/v1/projects/{id}/prioritize/moscow` | MoSCoW AI prioritize |
-| GET | `/api/v1/projects/{id}/documents/{type}/diff` | Version diff |
-
----
-
-## Database Migrations
-
-```bash
-# Generate a migration after model changes
-cd backend
-alembic revision --autogenerate -m "description"
-
-# Apply migrations
-alembic upgrade head
-
-# Rollback one step
-alembic downgrade -1
-```
+| `POST` | `/api/v1/auth/register` | Create account |
+| `POST` | `/api/v1/auth/login` | Get JWT token |
+| `POST` | `/api/v1/projects/` | Create project |
+| `POST` | `/api/v1/projects/{id}/inputs/text` | Submit text |
+| `POST` | `/api/v1/projects/{id}/inputs/upload` | Upload PDF/DOCX |
+| `POST` | `/api/v1/projects/{id}/requirements/analyze` | Run AI analysis |
+| `GET` | `/api/v1/projects/{id}/requirements/` | List requirements |
+| `POST` | `/api/v1/projects/{id}/documents/generate` | Generate documents |
+| `POST` | `/api/v1/projects/{id}/planning/generate` | Generate planning |
+| `POST` | `/api/v1/projects/{id}/diagrams/generate` | Generate diagrams |
+| `POST` | `/api/v1/projects/{id}/review/run` | Run AI review |
+| `POST` | `/api/v1/projects/{id}/prioritize/moscow` | MoSCoW re-prioritize |
+| `GET` | `/api/v1/projects/{id}/documents/{type}/diff` | Version diff |
 
 ---
 
 ## Project Structure
 
 ```
-ai-req-platform/
+ai-requirement-engineering-platform/
+├── railway.json              ← Railway deployment config (API service)
+├── render.yaml               ← Render Blueprint (all services)
+├── docker-compose.yml        ← Local Docker Compose (6 services)
+├── start.bat / stop.bat      ← Windows one-click launchers
 ├── backend/
-│   ├── app/
-│   │   ├── main.py               # FastAPI app entry point
-│   │   ├── core/                 # Config, DB, security, logging
-│   │   ├── models/               # SQLAlchemy ORM models
-│   │   ├── schemas/              # Pydantic request/response schemas
-│   │   ├── api/v1/
-│   │   │   ├── router.py         # Central API router
-│   │   │   └── endpoints/        # One file per domain
-│   │   └── services/             # All AI + business logic
-│   │       ├── requirement_analysis.py   # Phase 3: LangGraph pipeline
-│   │       ├── document_generator.py     # Phase 4: SRS, BRD, etc.
-│   │       ├── planning_generator.py     # Phase 5: Roadmap, sprints, cost
-│   │       ├── diagram_generator.py      # Phase 6: Mermaid diagrams
-│   │       ├── review_engine.py          # Phase 7: AI QA review
-│   │       ├── moscow_prioritizer.py     # Bonus: MoSCoW AI
-│   │       ├── diff_service.py           # Bonus: version diff
-│   │       ├── rag_service.py            # ChromaDB RAG integration
-│   │       ├── llm_client.py             # LangChain LLM factory
-│   │       └── document_parser.py        # PDF/DOCX text extraction
-│   ├── alembic/                  # DB migrations
+│   ├── .env.example          ← All backend env vars documented
+│   ├── Dockerfile            ← API container
+│   ├── Dockerfile.worker     ← Celery worker container
 │   ├── requirements.txt
-│   ├── Dockerfile
-│   └── Dockerfile.worker
-├── frontend/
-│   └── src/
-│       ├── api/                  # Axios API clients
-│       ├── context/              # Auth context
-│       ├── components/           # Layout, shared UI
-│       └── pages/                # One page per route
-├── docker-compose.yml
-└── README.md
+│   └── app/
+│       ├── main.py           ← FastAPI entry point + CORS
+│       ├── core/             ← config, database, security, logging
+│       ├── models/           ← SQLAlchemy ORM (8 models)
+│       ├── schemas/          ← Pydantic schemas
+│       ├── api/v1/endpoints/ ← REST endpoints (11 files)
+│       └── services/         ← AI pipeline + business logic
+│           ├── llm_client.py           ← Groq / OpenAI factory
+│           ├── requirement_analysis.py ← LangGraph 5-node pipeline
+│           ├── document_generator.py   ← SRS, BRD, User Stories...
+│           ├── planning_generator.py   ← Roadmap, sprints, cost...
+│           ├── diagram_generator.py    ← Mermaid.js diagrams
+│           ├── review_engine.py        ← AI quality reviewer
+│           └── rag_service.py          ← ChromaDB RAG
+└── frontend/
+    ├── .env.example          ← Frontend env vars documented
+    ├── vercel.json           ← Vercel deployment config
+    ├── Dockerfile            ← Production Nginx container
+    ├── vite.config.js
+    └── src/
+        ├── api/client.js     ← Axios (reads VITE_API_URL)
+        ├── context/          ← Auth context
+        ├── components/       ← Layout
+        └── pages/            ← 7 pages
 ```
 
 ---
 
-## Assumptions Made
+## Phase Checklist
 
-1. **OpenAI GPT-4o** is the LLM. The system is designed to swap models by changing `OPENAI_MODEL` in `.env`. Compatible with any OpenAI-API-compatible endpoint (e.g. Azure OpenAI, LiteLLM proxy).
-
-2. **Background tasks** use FastAPI's built-in `BackgroundTasks` for simplicity. In a production deployment with >10 concurrent users, migrate AI pipeline calls to Celery workers (infrastructure already in place — Celery + Redis are in docker-compose).
-
-3. **File uploads** are stored to disk (`/tmp/req_uploads`). In production, replace with S3/Azure Blob Storage by swapping `document_parser.py` to read from presigned URLs.
-
-4. **Multi-tenancy** is per-user project isolation (each user only sees their own projects). Full organization-level multi-tenancy would require an `Organization` model — deferred per scope.
-
-5. **PDF export** of generated documents is not implemented. The structured JSON + Markdown content is available via API; a ReportLab or Pandoc post-processing step could produce PDFs.
-
----
-
-## Checklist vs Requirements
-
-| Requirement | Status |
-|---|---|
-| Phase 1: Structure, DB schema, Docker, REST skeleton | ✅ |
-| Phase 2: Text, PDF, DOCX, transcript input | ✅ |
-| Phase 3: LangGraph AI pipeline, RAG with ChromaDB | ✅ |
-| Phase 4: SRS, BRD, User Stories, Use Cases, AC, Glossary | ✅ |
-| Phase 5: Modules, roadmap, sprints, team, tech stack, cost, risk | ✅ |
-| Phase 6: 6 Mermaid diagrams (Use Case, ER, Sequence, Class, Flow, Arch) | ✅ |
-| Phase 7: AI Review Engine with quality score + structured issues | ✅ |
-| Phase 8: OpenAPI docs, versioning, multi-user support | ✅ |
-| Bonus: MoSCoW AI prioritization | ✅ |
-| Bonus: Version diff viewer | ✅ |
-| PDF/DOCX export | ⚠️ deferred (see Assumptions) |
-| Jira ticket generation | ⚠️ deferred (requires Jira credentials) |
-| Voice transcription | ⚠️ deferred (add Whisper API in document_parser.py) |
+| Phase | Description | Status |
+|---|---|---|
+| 1 | Structure, DB schema, Docker, REST skeleton | Done |
+| 2 | Text, PDF, DOCX, transcript input | Done |
+| 3 | LangGraph pipeline, ChromaDB RAG | Done |
+| 4 | SRS, BRD, User Stories, Use Cases, Glossary | Done |
+| 5 | Roadmap, sprints, team, cost, risk | Done |
+| 6 | 6 Mermaid diagrams | Done |
+| 7 | AI Review Engine, quality score | Done |
+| 8 | OpenAPI docs, versioning, multi-user | Done |
+| Bonus | MoSCoW AI + version diff viewer | Done |
+| Deploy | Railway + Vercel configs, env documentation | Done |
+| PDF export | ReportLab/Pandoc post-processing | Deferred |
+| Voice transcription | Whisper API integration | Deferred |

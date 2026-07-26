@@ -35,10 +35,12 @@
 
 import axios from "axios";
 
-// Read the API base URL from the Vite environment variable.
-// Set in .env as: VITE_API_BASE_URL=http://localhost:8000
-// Falls back to "" in development (Vite proxy handles routing).
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+// Read the production API URL from the Vite environment variable.
+// PRODUCTION: Set VITE_API_URL=https://your-api.railway.app in Vercel's
+//             Environment Variables dashboard. Vite bakes this in at build time.
+// DEVELOPMENT: Leave VITE_API_URL unset — falls back to "" so Vite's proxy
+//              (vite.config.js) forwards /api/... to http://localhost:8000.
+const BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
 
 // Create an Axios instance with default configuration.
 // All API calls in the app use THIS instance, not raw axios.
