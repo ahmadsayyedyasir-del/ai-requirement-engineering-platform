@@ -1,5 +1,5 @@
 """
-document.py — Stores AI-generated documentation artifacts with full version history.
+document.py â€” Stores AI-generated documentation artifacts with full version history.
 
 WHY THIS FILE EXISTS:
   After requirements are extracted (Phase 3), the AI generates professional
@@ -15,11 +15,11 @@ WHY THIS FILE EXISTS:
 TWO-TABLE DESIGN:
   We use TWO tables to implement versioning:
 
-  1. `documents` table — one row per document TYPE per project.
+  1. `documents` table â€” one row per document TYPE per project.
      Example: one row for "project X's SRS" regardless of how many times it's regenerated.
      This row tracks the current version number and document type.
 
-  2. `document_versions` table — one row per version of each document.
+  2. `document_versions` table â€” one row per version of each document.
      Example: SRS v1, SRS v2, SRS v3 are separate rows linked to the same Document row.
      Each version has its own full content (JSON + Markdown).
 
@@ -28,7 +28,7 @@ TWO-TABLE DESIGN:
 
 TABLE: documents
   id               UUID        Primary key
-  project_id       UUID        FK → projects.id
+  project_id       UUID        FK â†’ projects.id
   doc_type         ENUM        srs | brd | user_stories | ...
   title            VARCHAR     Human-readable title ("Software Requirements Spec")
   current_version  INTEGER     The latest version number
@@ -37,7 +37,7 @@ TABLE: documents
 
 TABLE: document_versions
   id               UUID        Primary key
-  document_id      UUID        FK → documents.id
+  document_id      UUID        FK â†’ documents.id
   version_number   INTEGER     1, 2, 3, ... (incremented on each regeneration)
   content_json     JSON        Structured content (the canonical, queryable form)
   content_markdown TEXT        Rendered markdown (for display in the UI)
@@ -54,25 +54,25 @@ from sqlalchemy.dialects.postgresql import UUID
 import enum
 
 from app.core.database import Base
-from app.models.base_mixin import TimestampMixin
+from app.models import TimestampMixin
 
 
 class DocumentType(str, enum.Enum):
     """
     The types of documents this platform can generate.
 
-    srs                  — Software Requirements Specification: the master technical document
+    srs                  â€” Software Requirements Specification: the master technical document
                            that describes the complete system requirements for developers.
-    brd                  — Business Requirements Document: business-focused, describes
+    brd                  â€” Business Requirements Document: business-focused, describes
                            the business problem, stakeholders, and success criteria.
-    user_stories         — Agile user stories: "As a [role], I want [goal], so that [benefit]"
+    user_stories         â€” Agile user stories: "As a [role], I want [goal], so that [benefit]"
                            with story points and acceptance criteria.
-    use_cases            — Detailed use cases: actors, preconditions, step-by-step flows,
+    use_cases            â€” Detailed use cases: actors, preconditions, step-by-step flows,
                            alternative paths, and postconditions.
-    acceptance_criteria  — Gherkin-format scenarios (Given/When/Then) for each requirement.
-    glossary             — Definitions of domain-specific terms so everyone speaks the same language.
-    functional_spec      — Detailed feature-by-feature spec: inputs, outputs, business logic.
-    non_functional_spec  — Quality attribute requirements: performance targets, security
+    acceptance_criteria  â€” Gherkin-format scenarios (Given/When/Then) for each requirement.
+    glossary             â€” Definitions of domain-specific terms so everyone speaks the same language.
+    functional_spec      â€” Detailed feature-by-feature spec: inputs, outputs, business logic.
+    non_functional_spec  â€” Quality attribute requirements: performance targets, security
                            requirements, availability SLAs, etc.
     """
     srs = "srs"
@@ -87,7 +87,7 @@ class DocumentType(str, enum.Enum):
 
 class Document(Base, TimestampMixin):
     """
-    The "header" row for a document — one per document type per project.
+    The "header" row for a document â€” one per document type per project.
 
     This row doesn't contain the actual content. Content lives in DocumentVersion rows.
     Think of this as the "binder label" and DocumentVersion rows as the pages inside.
@@ -128,7 +128,7 @@ class Document(Base, TimestampMixin):
 
     # All version rows for this document.
     # order_by="DocumentVersion.version_number.desc()" means the first element
-    # in document.versions is always the LATEST version — convenient for display.
+    # in document.versions is always the LATEST version â€” convenient for display.
     versions: Mapped[list["DocumentVersion"]] = relationship(
         "DocumentVersion",
         back_populates="document",
@@ -171,13 +171,13 @@ class DocumentVersion(Base, TimestampMixin):
     # Combined with document_id, uniquely identifies any version of any document.
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    # The STRUCTURED content as a JSON dict — this is the canonical form.
+    # The STRUCTURED content as a JSON dict â€” this is the canonical form.
     # WHY JSON: The AI produces structured data (lists of requirements, sections, etc.).
     # Storing as JSON lets us query individual parts programmatically.
     # Example: {"sections": {"introduction": {...}, "functional_requirements": [...]}}
     content_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
-    # The RENDERED content as Markdown text — this is what the UI displays.
+    # The RENDERED content as Markdown text â€” this is what the UI displays.
     # WHY MARKDOWN: The frontend renders this with react-markdown into formatted HTML.
     # It's also human-readable if someone accesses the API directly.
     content_markdown: Mapped[str] = mapped_column(Text, nullable=True)

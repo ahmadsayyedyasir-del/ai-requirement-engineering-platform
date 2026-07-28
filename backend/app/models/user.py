@@ -1,5 +1,5 @@
 """
-user.py — The User database model (maps to the `users` table in PostgreSQL).
+user.py â€” The User database model (maps to the `users` table in PostgreSQL).
 
 WHY THIS FILE EXISTS:
   The platform supports multiple analysts working on different projects.
@@ -17,7 +17,7 @@ TABLE STRUCTURE (what the `users` table looks like in the DB):
   id              UUID        Primary key, auto-generated
   email           VARCHAR     Unique login identifier (indexed for fast lookup)
   full_name       VARCHAR     Display name
-  hashed_password VARCHAR     bcrypt hash — NEVER the plain password
+  hashed_password VARCHAR     bcrypt hash â€” NEVER the plain password
   role            ENUM        admin | analyst | viewer
   is_active       BOOLEAN     False = soft-deleted / suspended account
   created_at      TIMESTAMP   From TimestampMixin
@@ -52,7 +52,7 @@ import enum
 from app.core.database import Base
 
 # TimestampMixin adds created_at and updated_at automatically
-from app.models.base_mixin import TimestampMixin
+from app.models import TimestampMixin
 
 
 class UserRole(str, enum.Enum):
@@ -63,9 +63,9 @@ class UserRole(str, enum.Enum):
       Restricting roles to a fixed set prevents typos like "Analyst" vs "analyst"
       and makes it easy to check permissions: if user.role == UserRole.admin
 
-    admin   — full access: can manage users, see all projects, change any setting
-    analyst — standard user: can create projects and run the AI pipeline
-    viewer  — read-only: can view results but cannot trigger analysis or editing
+    admin   â€” full access: can manage users, see all projects, change any setting
+    analyst â€” standard user: can create projects and run the AI pipeline
+    viewer  â€” read-only: can view results but cannot trigger analysis or editing
     """
     admin = "admin"
     analyst = "analyst"
@@ -84,16 +84,16 @@ class User(Base, TimestampMixin):
     # Convention: lowercase, plural, snake_case.
     __tablename__ = "users"
 
-    # Primary Key — every row needs a unique identifier.
+    # Primary Key â€” every row needs a unique identifier.
     # UUID(as_uuid=True) stores as a native PostgreSQL UUID type (efficient).
     # default=uuid.uuid4 means Python generates a new UUID when creating a User object.
     # We use uuid.uuid4 (the function itself, not uuid.uuid4()) so it's called
-    # fresh each time — not a single shared UUID for all users.
+    # fresh each time â€” not a single shared UUID for all users.
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # Email — used as the login username.
+    # Email â€” used as the login username.
     # unique=True creates a UNIQUE constraint in the DB (can't have two accounts with same email).
     # index=True creates a B-tree index for fast lookups by email (used in login queries).
     # nullable=False means this field is required.
@@ -101,23 +101,23 @@ class User(Base, TimestampMixin):
         String(255), unique=True, nullable=False, index=True
     )
 
-    # Full name — displayed in the UI and on documents.
+    # Full name â€” displayed in the UI and on documents.
     # String(255) = up to 255 characters (standard for names).
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    # Hashed password — the bcrypt hash of the user's password.
+    # Hashed password â€” the bcrypt hash of the user's password.
     # IMPORTANT: We NEVER store the plain password. Only the hash goes here.
     # String(255) is enough because bcrypt hashes are always ~60 chars.
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    # Role — determines what the user can do.
+    # Role â€” determines what the user can do.
     # SAEnum(UserRole) maps the Python enum to a PostgreSQL ENUM type.
     # default=UserRole.analyst means new accounts are analysts unless explicitly set.
     role: Mapped[UserRole] = mapped_column(
         SAEnum(UserRole), default=UserRole.analyst, nullable=False
     )
 
-    # is_active — allows soft-deletion and account suspension.
+    # is_active â€” allows soft-deletion and account suspension.
     # Instead of deleting a user (which could break foreign keys), we set this to False.
     # All authentication checks verify is_active=True before allowing login.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

@@ -1,11 +1,11 @@
 /**
- * pages/ProjectPage.jsx — The central hub for one project.
+ * pages/ProjectPage.jsx â€” The central hub for one project.
  *
  * WHY THIS FILE EXISTS:
  *   Every project goes through a 3-step pipeline before artifacts are ready:
- *     Step 1 — Submit business input (text, transcript, or file upload)
- *     Step 2 — Run AI analysis (triggers the LangGraph pipeline)
- *     Step 3 — Generate full document package (docs + planning + diagrams)
+ *     Step 1 â€” Submit business input (text, transcript, or file upload)
+ *     Step 2 â€” Run AI analysis (triggers the LangGraph pipeline)
+ *     Step 3 â€” Generate full document package (docs + planning + diagrams)
  *   This page guides the analyst through those three steps in order.
  *   It also shows navigation cards linking to each artifact tab.
  *
@@ -18,7 +18,7 @@
  *
  * GENERATE ALL MUTATION:
  *   generateAllMutation calls THREE API endpoints in sequence (documents,
- *   planning, diagrams). Each returns 202 immediately — the actual generation
+ *   planning, diagrams). Each returns 202 immediately â€” the actual generation
  *   runs on the server. The mutation just kicks all three off at once.
  *
  * FILE DRAG-AND-DROP:
@@ -41,7 +41,6 @@ import {
   Upload, FileText, Brain, FileSearch, BarChart2, GitBranch,
   MessageSquare, CheckCircle2, Loader, ArrowRight, Zap, AlertTriangle, RotateCcw,
 } from "lucide-react";
-import "./ProjectPage.css";
 
 // Turns project.generation_errors into a simple per-section summary:
 // { documents: { total: 8, ok: 6, failed: 2, failedNames: [...] }, ... }
@@ -75,15 +74,15 @@ export default function ProjectPage() {
   const [textInput, setTextInput]     = useState("");
   const [isTranscript, setIsTranscript] = useState(false);
 
-  // File upload state — holds the File object selected by the user
+  // File upload state â€” holds the File object selected by the user
   const [uploadFile, setUploadFile] = useState(null);
 
   // Success message banner state (shown after actions like "Input submitted")
   const [actionMsg, setActionMsg] = useState("");
 
-  // ── QUERIES ───────────────────────────────────────────────────────────────
+  // â”€â”€ QUERIES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // Fetch the project — auto-polls every 3s while analyzing/generating
+  // Fetch the project â€” auto-polls every 3s while analyzing/generating
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => projectsApi.get(projectId),
@@ -98,7 +97,7 @@ export default function ProjectPage() {
     queryFn: () => projectsApi.listInputs(projectId),
   });
 
-  // ── MUTATIONS ─────────────────────────────────────────────────────────────
+  // â”€â”€ MUTATIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Submit text input
   const textMutation = useMutation({
@@ -126,24 +125,24 @@ export default function ProjectPage() {
     mutationFn: () => projectsApi.analyzeRequirements(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries(["project", projectId]); // Picks up "analyzing" status
-      setActionMsg("AI analysis started. This takes 30–60 seconds.");
+      setActionMsg("AI analysis started. This takes 30â€“60 seconds.");
     },
   });
 
   // Generate ALL artifacts (documents + planning + diagrams) in one click
   const generateAllMutation = useMutation({
     mutationFn: async () => {
-      // These three calls all return 202 immediately — generation runs on the
+      // These three calls all return 202 immediately â€” generation runs on the
       // server. project.status flips to "generating" as soon as the first one
       // starts, which is what actually drives the progress UI below (via the
-      // 3s poll on the project query) — not this mutation's pending state.
+      // 3s poll on the project query) â€” not this mutation's pending state.
       await projectsApi.generateDocuments(projectId);
       await projectsApi.generatePlanning(projectId);
       await projectsApi.generateDiagrams(projectId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["project", projectId]); // Picks up "generating" status
-      setActionMsg("Generation started — watch the progress below.");
+      setActionMsg("Generation started â€” watch the progress below.");
     },
   });
 
@@ -168,7 +167,7 @@ export default function ProjectPage() {
   const totalItems = 8 + 8 + 6; // 8 documents + 8 planning artifacts + 6 diagrams
   const isGenerating = project?.status === "generating";
 
-  // ── NAVIGATION CARDS CONFIG ───────────────────────────────────────────────
+  // â”€â”€ NAVIGATION CARDS CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Each card links to an artifact tab within this project
   const navCards = [
     { label: "Requirements", icon: Brain,      path: "requirements", color: "#6366f1" },
@@ -184,7 +183,7 @@ export default function ProjectPage() {
   return (
     <div className="project-page">
 
-      {/* ── Page header: project name + status pill ── */}
+      {/* â”€â”€ Page header: project name + status pill â”€â”€ */}
       <div className="page-header">
         <div>
           <h1>{project.name}</h1>
@@ -198,19 +197,19 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      {/* ── Success action banner ── */}
+      {/* â”€â”€ Success action banner â”€â”€ */}
       {actionMsg && (
         <div className="action-banner">
           <CheckCircle2 size={16} />
           {actionMsg}
-          {/* × button clears the message */}
-          <button onClick={() => setActionMsg("")}>×</button>
+          {/* Ã— button clears the message */}
+          <button onClick={() => setActionMsg("")}>Ã—</button>
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* STEP 1 — Submit Business Input                                      */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* STEP 1 â€” Submit Business Input                                      */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="section">
         <h2><span className="step-num">1</span> Add Business Input</h2>
 
@@ -264,7 +263,7 @@ export default function ProjectPage() {
               ) : (
                 <p>Drop PDF or DOCX here, or click to browse</p>
               )}
-              {/* Hidden file input — covers the whole zone, opens picker on click */}
+              {/* Hidden file input â€” covers the whole zone, opens picker on click */}
               <input
                 type="file"
                 accept=".pdf,.docx,.txt"
@@ -284,7 +283,7 @@ export default function ProjectPage() {
           </div>
         </div>
 
-        {/* List of submitted inputs — shows type, preview, and processing status */}
+        {/* List of submitted inputs â€” shows type, preview, and processing status */}
         {inputs.length > 0 && (
           <div className="inputs-list">
             {inputs.map((inp) => (
@@ -303,9 +302,9 @@ export default function ProjectPage() {
         )}
       </section>
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* STEP 2 — Run AI Analysis                                            */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* STEP 2 â€” Run AI Analysis                                            */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="section">
         <h2><span className="step-num">2</span> Run AI Analysis</h2>
         <p className="section-desc">
@@ -315,8 +314,8 @@ export default function ProjectPage() {
           className="btn btn-primary"
           onClick={() => analyzeMutation.mutate()}
           disabled={
-            inputs.length === 0            ||  // No inputs yet — nothing to analyze
-            project.status === "analyzing" ||  // Already running — prevent duplicate
+            inputs.length === 0            ||  // No inputs yet â€” nothing to analyze
+            project.status === "analyzing" ||  // Already running â€” prevent duplicate
             analyzeMutation.isPending          // Mutation in flight
           }
         >
@@ -328,10 +327,10 @@ export default function ProjectPage() {
         </button>
       </section>
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* STEP 3 — Generate Full Document Package                             */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* STEP 3 â€” Generate Full Document Package                             */}
       {/* Only shown after requirements have been analyzed.                   */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {(project.status === "analyzed" ||
         project.status === "completed" ||
         project.status === "generating") && (
@@ -353,7 +352,7 @@ export default function ProjectPage() {
             {isGenerating ? "Generating..." : "Generate Everything"}
           </button>
 
-          {/* Live progress — driven by project.generation_errors, refreshed by the
+          {/* Live progress â€” driven by project.generation_errors, refreshed by the
               3s poll while status === "generating". Replaces the old behaviour
               where the button's spinner stopped the instant the three 202
               responses came back, long before generation had actually finished. */}
@@ -361,7 +360,7 @@ export default function ProjectPage() {
             <div className="generation-progress" style={{ marginTop: 16 }}>
               <p className="section-desc">
                 {totalDone + totalFailed} / {totalItems} items processed
-                {isGenerating && " — still working..."}
+                {isGenerating && " â€” still working..."}
               </p>
               {["documents", "planning", "diagrams"].map((section) => {
                 const s = genSummary[section];
@@ -377,7 +376,7 @@ export default function ProjectPage() {
                 <div className="action-banner" style={{ background: "var(--color-danger-bg, #2a1414)", marginTop: 8 }}>
                   <AlertTriangle size={16} />
                   {totalFailed} item{totalFailed > 1 ? "s" : ""} failed to generate
-                  (usually a transient rate-limit — safe to retry).
+                  (usually a transient rate-limit â€” safe to retry).
                   <button
                     className="btn btn-primary btn-sm"
                     onClick={() => retryFailedMutation.mutate()}
@@ -397,7 +396,7 @@ export default function ProjectPage() {
         </section>
       )}
 
-      {/* ── Artifact navigation cards ── */}
+      {/* â”€â”€ Artifact navigation cards â”€â”€ */}
       <section className="section">
         <h2>Artifacts</h2>
         <div className="nav-cards">

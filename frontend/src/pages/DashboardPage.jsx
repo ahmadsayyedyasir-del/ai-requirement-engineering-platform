@@ -1,5 +1,5 @@
 /**
- * pages/DashboardPage.jsx — The project list (home screen after login).
+ * pages/DashboardPage.jsx â€” The project list (home screen after login).
  *
  * WHY THIS FILE EXISTS:
  *   After login the user lands here. They see all their projects as cards,
@@ -7,16 +7,16 @@
  *
  * KEY REACT QUERY CONCEPTS USED:
  *
- *   useQuery — Fetches data and manages loading/error/data states automatically.
- *     queryKey: ["projects"]   → cache key. Invalidating this key re-fetches.
- *     queryFn: projectsApi.list → the function that calls the API.
- *     data defaults to []     → avoids undefined checks before the fetch completes.
+ *   useQuery â€” Fetches data and manages loading/error/data states automatically.
+ *     queryKey: ["projects"]   â†’ cache key. Invalidating this key re-fetches.
+ *     queryFn: projectsApi.list â†’ the function that calls the API.
+ *     data defaults to []     â†’ avoids undefined checks before the fetch completes.
  *
- *   useMutation — For write operations (create, delete).
+ *   useMutation â€” For write operations (create, delete).
  *     mutationFn: the API call to make.
  *     onSuccess: callback after the mutation succeeds.
  *     queryClient.invalidateQueries(["projects"]) tells React Query to discard
- *     the cached project list and re-fetch it — so the new/deleted project
+ *     the cached project list and re-fetch it â€” so the new/deleted project
  *     appears/disappears from the UI immediately.
  *
  * MODAL PATTERN:
@@ -28,7 +28,7 @@
  * STATUS_COLORS:
  *   Maps project status strings to hex colours for the status pill.
  *   Applied as inline styles with opacity variants (hex + "22" = 13% opacity background,
- *   hex + "44" = 26% opacity border — a subtle "tinted" look without a solid colour).
+ *   hex + "44" = 26% opacity border â€” a subtle "tinted" look without a solid colour).
  */
 
 import React, { useState } from "react";
@@ -36,16 +36,15 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { projectsApi } from "../api/projects";
 import { Plus, FolderOpen, Loader, Trash2, ArrowRight, Brain } from "lucide-react";
-import "./DashboardPage.css";
 
-// Colour per project status — maps to the project lifecycle
+// Colour per project status â€” maps to the project lifecycle
 const STATUS_COLORS = {
-  draft:      "#94a3b8", // Grey     — just created, no input yet
-  analyzing:  "#f59e0b", // Amber    — AI pipeline running
-  analyzed:   "#22d3ee", // Cyan     — requirements extracted
-  generating: "#a78bfa", // Purple   — docs/diagrams being generated
-  completed:  "#22c55e", // Green    — everything done
-  archived:   "#64748b", // Dim grey — no longer active
+  draft:      "#94a3b8", // Grey     â€” just created, no input yet
+  analyzing:  "#f59e0b", // Amber    â€” AI pipeline running
+  analyzed:   "#22d3ee", // Cyan     â€” requirements extracted
+  generating: "#a78bfa", // Purple   â€” docs/diagrams being generated
+  completed:  "#22c55e", // Green    â€” everything done
+  archived:   "#64748b", // Dim grey â€” no longer active
 };
 
 export default function DashboardPage() {
@@ -58,7 +57,7 @@ export default function DashboardPage() {
   // Controlled form state for the new project modal
   const [form, setForm] = useState({ name: "", description: "", domain: "" });
 
-  // ── DATA FETCHING ────────────────────────────────────────────────────────
+  // â”€â”€ DATA FETCHING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Fetch all projects. React Query automatically shows loading state and
   // caches the result. Default [] prevents undefined errors before fetch completes.
   const { data: projects = [], isLoading } = useQuery({
@@ -66,9 +65,9 @@ export default function DashboardPage() {
     queryFn: projectsApi.list,
   });
 
-  // ── MUTATIONS ─────────────────────────────────────────────────────────────
+  // â”€â”€ MUTATIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // Create project mutation — POST /projects/
+  // Create project mutation â€” POST /projects/
   const createMutation = useMutation({
     mutationFn: projectsApi.create,
     onSuccess: (project) => {
@@ -79,7 +78,7 @@ export default function DashboardPage() {
     },
   });
 
-  // Delete project mutation — DELETE /projects/{id}
+  // Delete project mutation â€” DELETE /projects/{id}
   const deleteMutation = useMutation({
     mutationFn: projectsApi.delete,
     onSuccess: () => queryClient.invalidateQueries(["projects"]), // Re-fetch list
@@ -99,7 +98,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* ── Create Project Modal ─────────────────────────────────────────── */}
+      {/* â”€â”€ Create Project Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {showCreate && (
         // Clicking the dark overlay closes the modal
         <div className="modal-overlay" onClick={() => setShowCreate(false)}>
@@ -112,7 +111,7 @@ export default function DashboardPage() {
                 createMutation.mutate(form);
               }}
             >
-              {/* Project name — required */}
+              {/* Project name â€” required */}
               <div className="form-group">
                 <label>Project Name *</label>
                 <input
@@ -123,7 +122,7 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* Description — optional context for the AI */}
+              {/* Description â€” optional context for the AI */}
               <div className="form-group">
                 <label>Description</label>
                 <textarea
@@ -134,7 +133,7 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* Domain — helps the AI tailor its analysis (fintech vs healthcare etc.) */}
+              {/* Domain â€” helps the AI tailor its analysis (fintech vs healthcare etc.) */}
               <div className="form-group">
                 <label>Domain</label>
                 <select
@@ -166,16 +165,16 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Project Grid ────────────────────────────────────────────────── */}
+      {/* â”€â”€ Project Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {isLoading ? (
-        // Loading state — shown while the first fetch is in progress
+        // Loading state â€” shown while the first fetch is in progress
         <div className="loading-state">
           <Loader size={32} className="spin" />
           <p>Loading projects...</p>
         </div>
 
       ) : projects.length === 0 ? (
-        // Empty state — shown when the user has no projects yet
+        // Empty state â€” shown when the user has no projects yet
         <div className="empty-state">
           <Brain size={64} color="var(--color-border)" />
           <h2>No projects yet</h2>
@@ -209,7 +208,7 @@ export default function DashboardPage() {
                   {project.status}
                 </div>
 
-                {/* Delete button — confirm dialog prevents accidental deletion */}
+                {/* Delete button â€” confirm dialog prevents accidental deletion */}
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => {

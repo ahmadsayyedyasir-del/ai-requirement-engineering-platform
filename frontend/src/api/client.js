@@ -1,97 +1,66 @@
 /**
- * api/client.js — Axios HTTP client with automatic JWT token injection.
+ * api/client.js — Axios HTTP client + auth API calls.
  *
- * WHY THIS FILE EXISTS:
- *   Every API call in the app needs to:
- *     1. Send the JWT token in the Authorization header
- *     2. Handle 401 errors (token expired / invalid) by redirecting to login
- *   Without this file, every single api/... function would need to manually
- *   add the header and handle 401s. Instead, we configure it ONCE here.
+ * Two things in one file:
+ *   1. `client` — Axios instance with JWT injection and 401 redirect
+ *   2. `authApi` — login, register, me, logout (previously in auth.js)
  *
- * HOW AXIOS INTERCEPTORS WORK:
- *   Interceptors are middleware that run before a request is sent (request interceptor)
- *   or after a response is received (response interceptor).
- *
- *   Request interceptor: runs BEFORE the request leaves the browser.
- *     We use this to inject the Authorization header with the stored JWT token.
- *
- *   Response interceptor: runs AFTER the server responds.
- *     We use this to catch 401 errors (auth failures) and redirect to /login.
- *
- * HOW JWT TOKENS ARE STORED:
- *   localStorage is used to persist the token across page refreshes.
- *   The token is stored by the AuthContext after a successful login.
- *   It's removed by AuthContext on logout or by the response interceptor on 401.
- *
- *   Note: localStorage is accessible by JavaScript on the same origin.
- *   For higher security in production, consider httpOnly cookies instead.
- *
- * WHAT IS BASE_URL?
- *   In development (Vite dev server): VITE_API_BASE_URL is empty (""),
- *   so requests go to /api/v1/... and Vite proxies them to http://localhost:8000.
- *   In production (Docker): VITE_API_BASE_URL is set and requests go directly
- *   to the API container. The trailing "" (empty string) is a safe default.
+ * auth.js was merged here because it was only ~40 lines, imported by exactly
+ * one file (AuthContext.jsx), and always loaded alongside this module anyway.
  */
 
 import axios from "axios";
 
-// Read the production API URL from the Vite environment variable.
-// PRODUCTION: Set VITE_API_URL=https://your-api.railway.app in Vercel's
-//             Environment Variables dashboard. Vite bakes this in at build time.
-// DEVELOPMENT: Leave VITE_API_URL unset — falls back to "" so Vite's proxy
-//              (vite.config.js) forwards /api/... to http://localhost:8000.
+// PRODUCTION: set VITE_API_URL=https://your-api.railway.app in Vercel dashboard.
+// DEVELOPMENT: leave unset — Vite proxy (vite.config.js) forwards /api/... to localhost:8000.
 const BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
 
-// Create an Axios instance with default configuration.
-// All API calls in the app use THIS instance, not raw axios.
+// ── Axios instance ────────────────────────────────────────────────────────────
 const client = axios.create({
-  baseURL: `${BASE_URL}/api/v1`,              // All requests are prefixed with /api/v1
+  baseURL: `${BASE_URL}/api/v1`,
   headers: { "Content-Type": "application/json" },
 });
 
-// ── REQUEST INTERCEPTOR ────────────────────────────────────────────────────────
-// Runs before EVERY request sent by this client instance.
-// Reads the JWT token from localStorage and adds it to the Authorization header.
+// Inject JWT token before every request
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token"); // Stored by AuthContext after login
-
-  if (token) {
-    // Standard HTTP Authorization header format for Bearer tokens.
-    // The FastAPI backend reads this header via the oauth2_scheme dependency.
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config; // Return the (possibly modified) config to proceed with the request
+  const token = localStorage.getItem("access_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
-// ── RESPONSE INTERCEPTOR ───────────────────────────────────────────────────────
-// Runs after EVERY response received by this client instance.
+// On 401: clear invalid token and redirect to login
 client.interceptors.response.use(
-  // Success handler: called when response status is 2xx.
-  // Just pass the response through — no modification needed.
-  (response) => response,
-
-  // Error handler: called when response status is NOT 2xx.
-  (error) => {
-    if (error.response?.status === 401) {
-      // 401 = Unauthorized. This means the token is:
-      //   - Missing (user not logged in)
-      //   - Expired (token's "exp" claim has passed)
-      //   - Invalid (tampered or using wrong key)
-
-      // Clear the invalid token from storage so the next page load
-      // shows the login page instead of an infinite redirect loop.
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
       localStorage.removeItem("access_token");
-
-      // Redirect to login. window.location.href causes a full page reload,
-      // which clears all React state (clean slate for login page).
       window.location.href = "/login";
     }
-
-    // Re-throw the error so individual API calls can handle it
-    // (e.g., show "Login failed" message on the login page)
-    return Promise.reject(error);
+    return Promise.reject(err);
   }
 );
 
-export default client; // Export for use in all api/*.js files
+export default client;
+
+// ── Auth API ──────────────────────────────────────────────────────────────────
+// Login uses form-encoded data (not JSON) because FastAPI's
+// OAuth2PasswordRequestForm expects "username=...&password=..." format.
+// All other auth calls use the standard JSON client above.
+export const authApi = {
+  login: async (email, password) => {
+    const form = new URLSearchParams();
+    form.append("username", email); // FastAPI calls this "username"; we use email
+    form.append("password", password);
+    const res = await axios.post(`${BASE_URL}/api/v1/auth/login`, form, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+    return res.data; // { access_token, token_type }
+  },
+
+  register: (data) => client.post("/auth/register", data).then((r) => r.data),
+
+  me: () => client.get("/auth/me").then((r) => r.data),
+
+  // JWTs are stateless — clearing localStorage is sufficient to log out
+  logout: () => localStorage.removeItem("access_token"),
+};

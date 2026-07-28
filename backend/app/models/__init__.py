@@ -1,46 +1,42 @@
 """
-models/__init__.py — Imports all ORM models into a single namespace.
+models/__init__.py — ORM models + shared TimestampMixin.
 
-WHY THIS FILE EXISTS:
-  SQLAlchemy needs to "see" all model classes before it can:
-    1. Create the database tables (Base.metadata.create_all)
-    2. Resolve relationship references like "Project" (a string in quotes)
-    3. Run Alembic migrations that detect schema changes
-
-  By importing everything here, any other file can do:
-      from app.models import User, Project, Requirement
-  instead of importing from specific files:
-      from app.models.user import User
-      from app.models.project import Project
-
-  It also means Alembic's env.py only needs to import this one file
-  to get ALL models registered with SQLAlchemy's metadata.
-
-  The `# noqa: F401` comments suppress "imported but unused" warnings —
-  these imports ARE used (by SQLAlchemy's mapper), just not in this file directly.
+TimestampMixin is defined here (not in a separate file) because it's tiny,
+always imported alongside the models, and has no value as a standalone file.
 """
 
+from datetime import datetime
+from sqlalchemy import DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+
+class TimestampMixin:
+    """Adds server-managed created_at / updated_at to any model."""
+
+    # server_default=func.now(): the DB generates this on INSERT (not Python),
+    # ensuring consistent timestamps across multiple app instances.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    # onupdate=func.now(): DB auto-refreshes this on every UPDATE row.
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 # Import all models so SQLAlchemy's metadata registry is fully populated
-# before any table creation or migration happens.
+# before create_all or Alembic migrations run.
+from app.models.user import User                           # noqa: F401
+from app.models.project import Project                     # noqa: F401
+from app.models.requirement_input import RequirementInput  # noqa: F401
+from app.models.requirement import Requirement             # noqa: F401
+from app.models.document import Document, DocumentVersion  # noqa: F401
+from app.models.planning import PlanningArtifact           # noqa: F401
+from app.models.diagram import Diagram                     # noqa: F401
+from app.models.review import ReviewReport                 # noqa: F401
 
-from app.models.user import User                          # noqa: F401 — users table
-from app.models.project import Project                    # noqa: F401 — projects table
-from app.models.requirement_input import RequirementInput # noqa: F401 — raw inputs table
-from app.models.requirement import Requirement            # noqa: F401 — extracted requirements table
-from app.models.document import Document, DocumentVersion # noqa: F401 — docs + version history
-from app.models.planning import PlanningArtifact          # noqa: F401 — planning artifacts table
-from app.models.diagram import Diagram                    # noqa: F401 — mermaid diagrams table
-from app.models.review import ReviewReport                # noqa: F401 — AI review reports table
-
-# Export all models so external code can do `from app.models import User`
 __all__ = [
-    "User",
-    "Project",
-    "RequirementInput",
-    "Requirement",
-    "Document",
-    "DocumentVersion",
-    "PlanningArtifact",
-    "Diagram",
-    "ReviewReport",
+    "TimestampMixin",
+    "User", "Project", "RequirementInput", "Requirement",
+    "Document", "DocumentVersion", "PlanningArtifact", "Diagram", "ReviewReport",
 ]

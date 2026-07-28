@@ -1,5 +1,5 @@
 """
-planning.py — Stores AI-generated software planning artifacts.
+planning.py â€” Stores AI-generated software planning artifacts.
 
 WHY THIS FILE EXISTS:
   After requirements are extracted, a software project still needs a plan:
@@ -9,7 +9,7 @@ WHY THIS FILE EXISTS:
   Each artifact is stored as a separate row in this table with its own type,
   structured JSON content, and a human-readable markdown summary.
 
-DESIGN DECISION — ONE TABLE, MANY TYPES:
+DESIGN DECISION â€” ONE TABLE, MANY TYPES:
   Instead of 8 separate tables (one for roadmap, one for sprints, etc.),
   we use a single `planning_artifacts` table with a `planning_type` column.
   This is simpler and the artifacts have the same structure regardless of type:
@@ -17,7 +17,7 @@ DESIGN DECISION — ONE TABLE, MANY TYPES:
 
 TABLE STRUCTURE:
   id               UUID        Primary key
-  project_id       UUID        FK → projects.id
+  project_id       UUID        FK â†’ projects.id
   planning_type    ENUM        module_breakdown | roadmap | sprints | ...
   title            VARCHAR     Human-readable artifact name
   content          JSON        Full structured AI output (the queryable form)
@@ -33,7 +33,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import enum
 
 from app.core.database import Base
-from app.models.base_mixin import TimestampMixin
+from app.models import TimestampMixin
 
 
 class PlanningType(str, enum.Enum):
@@ -54,7 +54,7 @@ class PlanningArtifact(Base, TimestampMixin):
 
     Each row is one planning artifact for one project.
     There should be at most one row per planning_type per project
-    (the generator upserts — updates if exists, inserts if not).
+    (the generator upserts â€” updates if exists, inserts if not).
     """
 
     __tablename__ = "planning_artifacts"
@@ -78,7 +78,7 @@ class PlanningArtifact(Base, TimestampMixin):
     )
 
     # Auto-generated display title from the planning type
-    # Example: PlanningType.cost_estimation → "Cost Estimation"
+    # Example: PlanningType.cost_estimation â†’ "Cost Estimation"
     title: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # The full structured AI output stored as JSON.
@@ -90,7 +90,7 @@ class PlanningArtifact(Base, TimestampMixin):
 
     # Rendered markdown version of the content for display in the UI.
     # The planning_generator.py service builds this alongside the JSON.
-    # Example: "# Development Roadmap\n## Phase 1 — Foundation (4 weeks)\n..."
+    # Example: "# Development Roadmap\n## Phase 1 â€” Foundation (4 weeks)\n..."
     summary_markdown: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Relationship back to the parent project

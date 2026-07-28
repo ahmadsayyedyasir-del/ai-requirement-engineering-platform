@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Environment
+.env
+*.env.local
+backend/.env
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Database / uploads
+*.db
+*.sqlite3
+/tmp/req_uploads/
+
+# Alembic
+alembic/versions/*.py
+!alembic/versions/.gitkeep
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp

@@ -1,5 +1,5 @@
 """
-project.py — The Project database model (maps to the `projects` table).
+project.py â€” The Project database model (maps to the `projects` table).
 
 WHY THIS FILE EXISTS:
   A "project" is the top-level container for everything the platform produces.
@@ -11,21 +11,21 @@ WHY THIS FILE EXISTS:
 
 TABLE STRUCTURE:
   id              UUID        Primary key
-  owner_id        UUID        Foreign key → users.id (who created this project)
+  owner_id        UUID        Foreign key â†’ users.id (who created this project)
   name            VARCHAR     Human-readable project name
   description     TEXT        Optional longer description
   domain          VARCHAR     Industry domain (fintech, healthcare, ecommerce...)
-  status          ENUM        Current lifecycle stage (draft → analyzing → completed)
+  status          ENUM        Current lifecycle stage (draft â†’ analyzing â†’ completed)
   created_at      TIMESTAMP   From TimestampMixin
   updated_at      TIMESTAMP   From TimestampMixin
 
 STATUS LIFECYCLE:
-  draft      → User created the project but hasn't submitted input yet
-  analyzing  → AI pipeline is currently running (may take 30–60 seconds)
-  analyzed   → Requirements extracted successfully, ready to generate docs
-  generating → Document/diagram generation in progress
-  completed  → All artifacts generated
-  archived   → Project is no longer active (hidden from main list)
+  draft      â†’ User created the project but hasn't submitted input yet
+  analyzing  â†’ AI pipeline is currently running (may take 30â€“60 seconds)
+  analyzed   â†’ Requirements extracted successfully, ready to generate docs
+  generating â†’ Document/diagram generation in progress
+  completed  â†’ All artifacts generated
+  archived   â†’ Project is no longer active (hidden from main list)
 """
 
 import uuid
@@ -35,7 +35,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import enum
 
 from app.core.database import Base
-from app.models.base_mixin import TimestampMixin
+from app.models import TimestampMixin
 
 
 class ProjectStatus(str, enum.Enum):
@@ -43,12 +43,12 @@ class ProjectStatus(str, enum.Enum):
     Tracks where a project is in the AI pipeline lifecycle.
 
     Each status corresponds to a step the user has completed:
-      draft      — just created, no input yet
-      analyzing  — AI is currently extracting requirements (async background job)
-      analyzed   — requirements are in the DB, ready for doc generation
-      generating — document/planning/diagram generation is running
-      completed  — everything is done, all tabs have content
-      archived   — project is kept for reference but won't appear in active list
+      draft      â€” just created, no input yet
+      analyzing  â€” AI is currently extracting requirements (async background job)
+      analyzed   â€” requirements are in the DB, ready for doc generation
+      generating â€” document/planning/diagram generation is running
+      completed  â€” everything is done, all tabs have content
+      archived   â€” project is kept for reference but won't appear in active list
     """
     draft = "draft"
     analyzing = "analyzing"
@@ -62,18 +62,18 @@ class Project(Base, TimestampMixin):
     """
     ORM model for the `projects` table.
 
-    This is the central entity of the whole system — every other model
+    This is the central entity of the whole system â€” every other model
     links back to a project via a foreign key.
     """
 
     __tablename__ = "projects"
 
-    # Primary key — unique identifier for each project
+    # Primary key â€” unique identifier for each project
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # Foreign key to users.id — every project has exactly one owner.
+    # Foreign key to users.id â€” every project has exactly one owner.
     # ondelete="CASCADE" means: if the owner User is deleted, delete all their projects.
     # index=True speeds up queries like "give me all projects owned by user X".
     owner_id: Mapped[uuid.UUID] = mapped_column(
@@ -87,11 +87,11 @@ class Project(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # A longer description of what the project is about.
-    # Text allows much more content than String(255) — no practical length limit.
+    # Text allows much more content than String(255) â€” no practical length limit.
     # nullable=True means it's optional.
     description: Mapped[str] = mapped_column(Text, nullable=True)
 
-    # Industry domain — helps the AI tailor its analysis.
+    # Industry domain â€” helps the AI tailor its analysis.
     # Optional context clue: a "fintech" project might need different NFRs than "healthcare".
     domain: Mapped[str] = mapped_column(String(100), nullable=True)
 
@@ -103,13 +103,13 @@ class Project(Base, TimestampMixin):
     # Tracks the outcome of the LAST "Generate Everything" run, per item.
     # Shape: {"documents": {"srs": "ok", "brd": "failed: <error>"}, "planning": {...}, "diagrams": {...}}
     # WHY THIS EXISTS: previously, if a document/planning artifact/diagram failed
-    # to generate (e.g. rate limit), it was only written to the server log — the
+    # to generate (e.g. rate limit), it was only written to the server log â€” the
     # UI and the user had no way to know anything was missing, let alone which
     # item or why. This column makes failures visible so the UI can show exactly
     # what succeeded/failed and offer a "Retry Failed Only" action.
     generation_errors: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
-    # ── RELATIONSHIPS ────────────────────────────────────────────────────────
+    # â”€â”€ RELATIONSHIPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     # The user who owns this project. Accessed as project.owner.
     # back_populates="projects" connects to User.projects (the other side of the relationship).
@@ -128,7 +128,7 @@ class Project(Base, TimestampMixin):
     )
 
     # All generated documents (SRS, BRD, User Stories, etc.) for this project.
-    # Each document also has versions — see the Document model.
+    # Each document also has versions â€” see the Document model.
     documents: Mapped[list["Document"]] = relationship(  # noqa: F821
         "Document", back_populates="project", cascade="all, delete-orphan"
     )

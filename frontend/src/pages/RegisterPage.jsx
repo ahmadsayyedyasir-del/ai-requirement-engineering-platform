@@ -1,9 +1,9 @@
 /**
- * pages/RegisterPage.jsx — New user registration form.
+ * pages/RegisterPage.jsx â€” New user registration form.
  *
  * WHY THIS FILE EXISTS:
  *   Lets new analysts create an account. After successful registration,
- *   redirects to /login — they are NOT automatically logged in.
+ *   redirects to /login â€” they are NOT automatically logged in.
  *
  * WHY NOT AUTO-LOGIN AFTER REGISTER?
  *   Keeping registration and login as separate steps is simpler and more
@@ -11,7 +11,7 @@
  *   This also makes it obvious that registration succeeded.
  *
  * NOTE: authApi.register() is called directly here (not through AuthContext)
- *   because registration doesn't set a session — it just creates a DB record.
+ *   because registration doesn't set a session â€” it just creates a DB record.
  *   Login is what creates a session, so that's what lives in AuthContext.
  *
  * FORM VALIDATION:
@@ -22,14 +22,13 @@
 
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { authApi } from "../api/auth"; // Direct API call — no context needed for register
+import { authApi } from "../api/auth"; // Direct API call â€” no context needed for register
 import { Brain, Loader } from "lucide-react";
-import "./AuthPage.css";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  // Three-field form — email, full name, password
+  // Three-field form â€” email, full name, password
   const [form, setForm] = useState({ email: "", full_name: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,7 +39,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // Create the account — POST /auth/register with {email, full_name, password}
+      // Create the account â€” POST /auth/register with {email, full_name, password}
       await authApi.register(form);
 
       // On success: go to login page so user can sign in with their new account
@@ -58,7 +57,7 @@ export default function RegisterPage() {
     <div className="auth-container">
       <div className="auth-card">
 
-        {/* Logo + branding — same as LoginPage for visual consistency */}
+        {/* Logo + branding â€” same as LoginPage for visual consistency */}
         <div className="auth-logo">
           <Brain size={40} color="var(--color-primary)" />
           <h1>Create Account</h1>
@@ -67,7 +66,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="auth-form">
 
-          {/* Full name — displayed in the sidebar and on generated documents */}
+          {/* Full name â€” displayed in the sidebar and on generated documents */}
           <div className="form-group">
             <label>Full Name</label>
             <input
@@ -79,7 +78,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Email — used as the login username */}
+          {/* Email â€” used as the login username */}
           <div className="form-group">
             <label>Email</label>
             <input
@@ -91,7 +90,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Password — minLength enforces the 8-char minimum client-side */}
+          {/* Password â€” minLength enforces the 8-char minimum client-side */}
           <div className="form-group">
             <label>Password</label>
             <input
